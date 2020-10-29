@@ -11,6 +11,8 @@ from sqlalchemy import create_engine, func, inspect
 
 from flask import Flask, jsonify
 
+import json
+
 # Database Setup
 database_path = "../Resources/hawaii.sqlite"
 engine = create_engine(f"sqlite:///{database_path}?check_same_thread=False")
@@ -73,6 +75,25 @@ one_yr_ago_str = pd.to_datetime(one_yr_ago_pd).strftime('%Y-%m-%d')
 
 print(f'One year ago date from the last date in the database is (in string format): {one_yr_ago_str}')
 
+# This function called `calc_temps` will accept start date and end date in the format '%Y-%m-%d' 
+# and return the minimum, average, and maximum temperatures for that range of dates
+def calc_temps(start_date, end_date):
+    """TMIN, TAVG, and TMAX for a list of dates.
+    
+    Args:
+        start_date (string): A date string in the format %Y-%m-%d
+        end_date (string): A date string in the format %Y-%m-%d
+        
+    Returns:
+        TMIN, TAVE, and TMAX
+    """
+    
+    return session.query(func.min(Measurement.tobs), func.max(Measurement.tobs), func.avg(Measurement.tobs)).\
+        filter(Measurement.date >= start_date).filter(Measurement.date <= end_date).all()
+
+# function usage example
+print(calc_temps('2012-02-28', '2012-03-05'))
+
 # Flask Routes
 
 @app.route("/")
@@ -91,7 +112,7 @@ def dates():
     """
     # Design a query to retrieve the last 12 months of precipitation data and plot the results
     last_12_months_climate_db = session.query(Measurement.date, Measurement.prcp). \
-                                    filter(Measurement.date >= one_yr_ago_str[0]).filter(Measurement.date <= last_date_in_database_str[0]).all()
+                                    filter(Measurement.date.between(one_yr_ago_str, last_date_in_database_str[0])).all()
 
     # Save the query results as a Pandas DataFrame
     last_12_months_climate_df = pd.DataFrame( last_12_months_climate_db )
@@ -120,7 +141,7 @@ def dates():
     #    last_12_months_climate_list.append(last_12_months_climate_dict)
 
     # Convert list of tuples into normal list
-    return jsonify(cleaned_last_12_months_climate_dict)
+    return jsonify(cleaned_last_12_months_climate_dict), 404
 
 @app.route("/api/v1.0/stations")
 def stations():
@@ -128,7 +149,7 @@ def stations():
     sel = [Station.id, Station.station, Station.name, Station.latitude, Station.longitude, Station.elevation]
 
     all_stations_db = session.query(*sel).\
-                      filter(Measurement.date.between(one_yr_ago_str[0], last_date_in_database_str[0])).all()
+                      filter(Measurement.date.between(one_yr_ago_str, last_date_in_database_str[0])).all()
     
     # Save the query results as a Pandas DataFrame
     all_stations_df = pd.DataFrame( all_stations_db )
@@ -148,7 +169,7 @@ def stations():
     #    station_dict["station"]=all_stations_db.station
     #    all_stations.append(station_dict)
 
-    return jsonify(all_stations_dict)
+    return jsonify(all_stations_dict), 404
 
 @app.route("/api/v1.0/tobs")
 def tobs():
@@ -171,7 +192,6 @@ def tobs():
     for stations in most_active_station_name:
         print(f'The Most active station is: {stations[0]}')
 
-    most_active_station_name = most_active_station[0][0]
     print(f'The Most active station name is: {most_active_station_name[0][0]}')
 
     # Choose the station with the highest number of temperature observations.
@@ -180,13 +200,13 @@ def tobs():
             session.query(Measurement.tobs).\
                filter(Measurement.station == most_active_station_id).\
                filter(Measurement.station == Station.station).\
-               filter(Measurement.date >= one_yr_ago_str[0]).filter(Measurement.date <= last_date_in_database_str[0]).all()
+               filter(Measurement.date.between(one_yr_ago_str, last_date_in_database_str[0])).all()
 
     most_active_station_12_months_of_temperature_df = pd.DataFrame(most_active_station_12_months_of_temperature_db)
 
     # Rename headers and provide cleaned name
     most_active_station_12_months_of_temperature_df = most_active_station_12_months_of_temperature_df.rename(
-                                columns={"tobs": "Temperature Observations"})
+        columns={"tobs": f"Latest one year Temperature Observations of most active station id: {most_active_station_id} and station name {most_active_station_name[0][0]}"})
     
     most_active_station_12_months_of_temperature_dict = most_active_station_12_months_of_temperature_df.to_dict()
     #tobs_data = []
@@ -195,7 +215,75 @@ def tobs():
         #tob_dict["Temp. Observations"]= tob.tobs
         #tobs_data.append(tob_dict)
 
-    return jsonify(most_active_station_12_months_of_temperature_dict)
+    return jsonify(most_active_station_12_months_of_temperature_dict), 404
+
+@app.route("/api/v1.0/start/<start_date>")
+def start(start_date):
+    """ ✓ Route accepts the start date
+        as a parameter from the URL
+        ✓ Returns the min, max, and
+        average temperatures
+        calculated from the given start
+        date to the end of the dataset"""
+
+    # Use the function `calc_temps` to calculate the tmin, tavg, and tmax 
+    # for your trip using the start date for those same dates.
+    trip_start_date = start_date
+    trip_end_date = last_date_in_database_str[0]
+
+    # trip_start_date_pd = pd.to_datetime(trip_start_date).to_pydatetime()
+    # trip_end_date_pd = pd.to_datetime(trip_end_date).to_pydatetime()
+
+    #calculate the tmin, tavg, and tmax
+    #last_year_start_str = pd.to_datetime(last_year_start_pd).strftime('%Y-%m-%d')
+    #last_year_end_str = pd.to_datetime(last_year_end_pd).strftime('%Y-%m-%d')
+
+    trip_temperatures = calc_temps(trip_start_date, trip_end_date)
+    print(trip_temperatures)
+
+    trip_temperatures_dict = {"My Trip Start Date": trip_start_date,
+                              "My Trip End Date (Last date in database)": trip_end_date,
+                              "My Trip Minimum Temperature": trip_temperatures[0][0],
+                              "My Trip Maximum Temperature": trip_temperatures[0][1],
+                              "My Trip average Temperature": trip_temperatures[0][2]
+                              }
+
+    return jsonify(trip_temperatures_dict), 404
+
+@app.route("/api/v1.0/start/<start_date>/end/<end_date>")
+def start_to_end(start_date, end_date):
+    """ ✓ Route accepts the start and
+        end dates as parameters from the URL
+        ✓ Returns the min, max, and
+        average temperatures
+        calculated from the given start
+        date to the given end date"""
+
+    # Use the function `calc_temps` to calculate the tmin, tavg, and tmax 
+    # for your trip using the start date for those same dates.
+    trip_start_date = start_date
+    trip_end_date = end_date
+
+    # trip_start_date_pd = pd.to_datetime(trip_start_date).to_pydatetime()
+    # trip_end_date_pd = pd.to_datetime(trip_end_date).to_pydatetime()
+
+    #calculate the tmin, tavg, and tmax
+    #last_year_start_str = pd.to_datetime(last_year_start_pd).strftime('%Y-%m-%d')
+    #last_year_end_str = pd.to_datetime(last_year_end_pd).strftime('%Y-%m-%d')
+
+    trip_temperatures = calc_temps(trip_start_date, trip_end_date)
+    print(trip_temperatures)
+
+    trip_temperatures_dict = {"My Trip Start Date": trip_start_date,
+                              "My Trip End Date (Last date in database)": trip_end_date,
+                              "My Trip Minimum Temperature": trip_temperatures[0][0],
+                              "My Trip Maximum Temperature": trip_temperatures[0][1],
+                              "My Trip average Temperature": trip_temperatures[0][2]
+                              }
+    trip_temperatures_json = json.dumps(trip_temperatures_dict, sort_keys=True, indent=1)
+
+    #return trip_temperatures_json, 404
+    return jsonify(trip_temperatures_dict), 404
 
 if __name__ == "__main__":
     app.run(debug=True)
