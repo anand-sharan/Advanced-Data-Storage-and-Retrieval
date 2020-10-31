@@ -99,7 +99,7 @@ A Flask API based application is created on the queries.
 * API Dynamic Routes
 
 * Start Route and End Route
-* `/api/v1.0/<start>` and `/api/v1.0/<start>/<end>`
+* `/api/v1.0/start/<start>` and `/api/v1.0/start/<start>/end/<end>`
 
   * Return a JSON list of the minimum temperature, the average temperature, and the max temperature for a given start or start-end range.
 
@@ -114,16 +114,6 @@ A Flask API based application is created on the queries.
 * The following are optional challenge queries. These are highly recommended to attempt, but not required for the homework.
 
 ### Trip Temperature Analysis
-
-* Hawaii is reputed to enjoy mild weather all year. Is there a meaningful difference between the temperature in, for example, June and December?
-
-* You may either use SQLAlchemy or pandas's `read_csv()` to perform this portion.
-
-* Identify the average temperature in June at all stations across all available years in the dataset. Do the same for December temperature.
-
-* Use the t-test to determine whether the difference in the means, if any, is statistically significant. Will you use a paired t-test, or an unpaired t-test? Why?
-
-### Temperature Analysis II
 
 * The starter notebook contains a function called `calc_temps` that will accept a start date and end date in the format `%Y-%m-%d`. The function will return the minimum, average, and maximum temperatures for that range of dates.
 
