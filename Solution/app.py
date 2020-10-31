@@ -103,8 +103,8 @@ def welcome():
             /api/v1.0/precipitation<br/> \
             /api/v1.0/stations<br/> \
             /api/v1.0/tobs<br/> \
-            /api/v1.0/start<br/> \
-            /api/v1.0/start/end")
+            /api/v1.0/start/start_date<br/> \
+            /api/v1.0/start/start_date/end/end_date")
 
 @app.route("/api/v1.0/precipitation")
 def dates():
